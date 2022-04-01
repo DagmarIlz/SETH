@@ -41,6 +41,7 @@ def read_fasta(fasta_path):
 
 
 def get_prott5(root_dir):
+    print("Loading ProtT5...")
     transformers.logging.set_verbosity_error()
     #excluded lines are alternative import routes
     #cache_dir = root_dir / "ProtT5_XL_U50"
@@ -58,6 +59,7 @@ def get_prott5(root_dir):
 
 
 def load_LinReg_checkpoint(root_dir): 
+    print("Loading SETH_0...")
     checkpoint_dir = root_dir / "LinReg"
     checkpoint_dir.mkdir(exist_ok=True)
     checkpoint_p = checkpoint_dir / 'LinReg.sav'
@@ -71,6 +73,7 @@ def load_LinReg_checkpoint(root_dir):
 
 
 def get_predictions(seqs, prott5, tokenizer, LinReg):
+    print("Making predictions...")
     
     predictions = dict()
     for protein_id, original_seq in seqs.items():
@@ -115,7 +118,7 @@ def write_predictions(out_path, predictions):
                 binary = prediction[idx]
                 conf=confidence[idx]
                 out_string.append("{}\t{}\t{:.4f}\t{}".format(
-                    idx, AA, conf, round(binary)))
+                    idx+1, AA, conf, round(binary)))
             out_f.write( "\n".join(out_string) + "\n")
     return None
 
