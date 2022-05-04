@@ -12,13 +12,42 @@ from pathlib import Path
 import torch
 import transformers
 from transformers import T5EncoderModel, T5Tokenizer
-import pickle
 import requests
+import torch.nn as nn
 
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print("Using device: {}".format(device))
 print("IMPORTANT: this will be EXTREMELY slow if not run on GPU. (so the above should say sth like cuda:0).")
+
+#Define CNN class
+class CNN( nn.Module ):
+    def __init__( self, n_classes, n_features, pretrained_model=None ):
+        super(CNN, self).__init__()
+        self.n_classes = n_classes
+        bottleneck_dim = 24       
+        self.classifier = nn.Sequential(
+                        #summarize 5 neighbouring AA info
+                        #padding: dimension corresponding to AA number does not change
+                        nn.Conv2d( n_features, bottleneck_dim, kernel_size=(5,1), padding=(2,0) ), 
+                        nn.LeakyReLU(0.05),
+                        nn.Conv2d( bottleneck_dim, self.n_classes, kernel_size=(5,1), padding=(2,0))
+                        )
+
+    def forward( self, x):
+        '''
+            L = protein length
+            B = batch-size
+            F = number of features (1024 for embeddings)
+            N = number of classes (9 for conservation)
+        '''
+        # IN: X = (B x L x F); OUT: (B x F x L, 1)
+        x = x.permute(0,2,1).unsqueeze(dim=-1) 
+        Yhat = self.classifier(x) # OUT: Yhat_consurf = (B x N x L x 1)
+        # IN: (B x N x L x 1); OUT: ( B x L x N )
+        Yhat = Yhat.squeeze(dim=-1)
+        return Yhat
+
 
 def read_fasta(fasta_path):
     '''
@@ -58,21 +87,24 @@ def get_prott5(root_dir):
     return model, tokenizer
 
 
-def load_LinReg_checkpoint(root_dir): 
-    print("Loading SETH_0...")
-    checkpoint_dir = root_dir / "LinReg"
+def load_CNN_ckeckpoint(root_dir):
+    print("Loading SETH_1...")
+    predictor=CNN(1, 1024)
+    checkpoint_dir = root_dir / "CNN"
     checkpoint_dir.mkdir(exist_ok=True)
-    checkpoint_p = checkpoint_dir / 'LinReg.sav'
+    checkpoint_p = checkpoint_dir / 'CNN.pt'
     if not checkpoint_p.is_file():
-        url="https://rostlab.org/~deepppi/SETH_LinReg.sav"
+        url="https://rostlab.org/~deepppi/SETH_CNN.pt"
         with requests.get(url, stream=True) as response, open(checkpoint_p, 'wb') as outfile:
             outfile.write(response.content)
-    predictor = pickle.load(open(checkpoint_p, 'rb'))
+    state = torch.load( checkpoint_p )
+    predictor.load_state_dict(state['state_dict'])
+    predictor = predictor.to(device)
+    predictor = predictor.eval()
     return predictor
+    
 
-
-
-def get_predictions(seqs, prott5, tokenizer, LinReg):
+def get_predictions(seqs, prott5, tokenizer, CNN):
     print("Making predictions...")
     
     predictions = dict()
@@ -89,8 +121,8 @@ def get_predictions(seqs, prott5, tokenizer, LinReg):
             with torch.no_grad():
                 # get embeddings extracted from last hidden state 
                 emb = prott5(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state[:,:seq_len] # [1, L, 1024]
-                # predict Z-scores with LinReg
-                prediction=LinReg.predict(emb.detach().squeeze().cpu().numpy())
+                # predict Z-scores with CNN
+                prediction=CNN(emb).detach().squeeze().cpu().numpy()
                 # convert Z-scores into 0,1 with threshold 8, disorder=1
                 diso_pred=(prediction<8).astype(int)
                 # confidence metric: Z-scores normalized to [0,1]
@@ -152,8 +184,8 @@ def main():
 
     seqs = read_fasta(in_path)
     prott5, tokenizer = get_prott5(root_dir)
-    LinReg = load_LinReg_checkpoint(root_dir)
-    predictions = get_predictions(seqs, prott5, tokenizer, LinReg)
+    CNN = load_CNN_ckeckpoint(root_dir)
+    predictions = get_predictions(seqs, prott5, tokenizer, CNN)
     write_predictions(out_path, predictions)
 
 
