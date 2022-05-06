@@ -25,7 +25,7 @@ class CNN( nn.Module ):
     def __init__( self, n_classes, n_features, pretrained_model=None ):
         super(CNN, self).__init__()
         self.n_classes = n_classes
-        bottleneck_dim = 24       
+        bottleneck_dim = 28       
         self.classifier = nn.Sequential(
                         #summarize 5 neighbouring AA info
                         #padding: dimension corresponding to AA number does not change
