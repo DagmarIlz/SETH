@@ -20,17 +20,17 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print("Using device: {}".format(device))
 print("IMPORTANT: this will be EXTREMELY slow if not run on GPU. (so the above should say sth like cuda:0).")
 
-#Define CNN class
+#Define CNN structure
 class CNN( nn.Module ):
     def __init__( self, n_classes, n_features, pretrained_model=None ):
         super(CNN, self).__init__()
         self.n_classes = n_classes
         bottleneck_dim = 28       
         self.classifier = nn.Sequential(
-                        #summarize 5 neighbouring AA info
+                        #summarize 5 neighbouring amino acid (AA) information
                         #padding: dimension corresponding to AA number does not change
                         nn.Conv2d( n_features, bottleneck_dim, kernel_size=(5,1), padding=(2,0) ), 
-                        nn.LeakyReLU(0.05),
+                        nn.Tanh(),
                         nn.Conv2d( bottleneck_dim, self.n_classes, kernel_size=(5,1), padding=(2,0))
                         )
 
@@ -39,7 +39,7 @@ class CNN( nn.Module ):
             L = protein length
             B = batch-size
             F = number of features (1024 for embeddings)
-            N = number of classes (9 for conservation)
+            N = number of classes (1 for disorder, since predict one continuous number)
         '''
         # IN: X = (B x L x F); OUT: (B x F x L, 1)
         x = x.permute(0,2,1).unsqueeze(dim=-1) 
