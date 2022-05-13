@@ -22,7 +22,7 @@ class CNN( nn.Module ):
         self.n_classes = n_classes
         bottleneck_dim = 28       
         self.classifier = nn.Sequential(
-                        #summarize 5 neighbouring amino acid (AA) information
+                        #summarize information from 5 neighbouring amino acids (AA) 
                         #padding: dimension corresponding to AA number does not change
                         nn.Conv2d( n_features, bottleneck_dim, kernel_size=(5,1), padding=(2,0) ), 
                         nn.Tanh(),
