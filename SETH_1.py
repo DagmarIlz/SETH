@@ -22,7 +22,7 @@ class CNN( nn.Module ):
         self.n_classes = n_classes
         bottleneck_dim = 28       
         self.classifier = nn.Sequential(
-                        #summarize information from 5 neighbouring amino acids (AA) 
+                        #summarize information from 5 neighbouring amino acids (AAs) 
                         #padding: dimension corresponding to AA number does not change
                         nn.Conv2d( n_features, bottleneck_dim, kernel_size=(5,1), padding=(2,0) ), 
                         nn.Tanh(),
@@ -34,7 +34,7 @@ class CNN( nn.Module ):
             L = protein length
             B = batch-size
             F = number of features (1024 for embeddings)
-            N = number of classes (1 for disorder, since predict one continuous number)
+            N = number of output nodes (1 for disorder, since predict one continuous number)
         '''
         # IN: X = (B x L x F); OUT: (B x F x L, 1)
         x = x.permute(0,2,1).unsqueeze(dim=-1) 
