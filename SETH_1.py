@@ -94,6 +94,8 @@ def load_CNN_ckeckpoint(root_dir):
             outfile.write(response.content)
     state = torch.load( checkpoint_p )
     predictor.load_state_dict(state['state_dict'])
+    if not device.type=='cpu':
+        predictor = predictor.half() # run in half-precision
     predictor = predictor.to(device)
     predictor = predictor.eval()
     return predictor
