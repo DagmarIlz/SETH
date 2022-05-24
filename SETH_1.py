@@ -119,11 +119,11 @@ def get_predictions(seqs, prott5, tokenizer, CNN):
                 # get embeddings extracted from last hidden state 
                 emb = prott5(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state[:,:seq_len] # [1, L, 1024]
                 # predict Z-scores with CNN
-                prediction=CNN(emb).detach().squeeze().cpu().numpy()
+                Zscore=CNN(emb).detach().squeeze().cpu().numpy()
                 # convert Z-scores into 0,1 with threshold 8, disorder=1
-                diso_pred=(prediction<8).astype(int)
+                diso_pred=(Zscore<8).astype(int)
                 # confidence metric: Z-scores normalized to [0,1]
-                prediction=prediction*(-1) # disorder should have higher numbers than order
+                prediction=Zscore*(-1) # disorder should have higher numbers than order
                 confidence=(prediction-(-17))/(6-(-17))
                 #all confidence values smaller than 0, larger than 1 mapped to 0 or 1.
                 for i in range(len(confidence)):
@@ -131,7 +131,7 @@ def get_predictions(seqs, prott5, tokenizer, CNN):
                         confidence[i]=0
                     if confidence[i]>1:
                         confidence[i]=1
-                predictions[protein_id] = (original_seq, diso_pred, confidence)
+                predictions[protein_id] = (original_seq, diso_pred, confidence, Zscore)
         except RuntimeError as e :
             print(e)
             print("RuntimeError during embedding for {} (L={})".format(protein_id, seq_len))
@@ -139,16 +139,26 @@ def get_predictions(seqs, prott5, tokenizer, CNN):
     return predictions
 
 
-def write_predictions(out_path, predictions):
-    with open(out_path, 'w+') as out_f:
-        for protein_id, (sequence, prediction, confidence) in predictions.items():
-            out_string = [protein_id]
-            for idx, AA in enumerate(sequence):
-                binary = prediction[idx]
-                conf=confidence[idx]
-                out_string.append("{}\t{}\t{:.4f}\t{}".format(
-                    idx+1, AA, conf, round(binary)))
-            out_f.write( "\n".join(out_string) + "\n")
+def write_predictions(out_path, predictions, form):
+    if form=='Cs':
+        with open(out_path, 'w+') as out_f:
+            out_f.write( '\n'.join( 
+            [ "{}\n{}".format( 
+                protein_id, ', '.join( [str(j) for j in Zscore] )) 
+            for protein_id, (sequence, prediction, confidence, Zscore) in predictions.items()
+            ] 
+              ) )
+    else:
+        with open(out_path, 'w+') as out_f:
+            for protein_id, (sequence, prediction, confidence, Zscore) in predictions.items():
+                out_string = [protein_id]
+                for idx, AA in enumerate(sequence):
+                    binary = prediction[idx]
+                    conf=confidence[idx]
+                    out_string.append("{}\t{}\t{:.4f}\t{}".format(
+                        idx+1, AA, conf, round(binary)))
+                out_f.write( "\n".join(out_string) + "\n")
+    
     return None
 
 
@@ -164,9 +174,14 @@ def create_arg_parser():
     parser.add_argument('-i', '--input', required=True, type=str,
                         help='A path to a fasta-formatted text file containing protein sequence(s).')
 
-    # Optional positional argument
+    # Required positional argument
     parser.add_argument('-o', '--output', required=True, type=str,
-                        help='A path for saving the disorder predictions as CSV in CAID format.')
+                        help='A path for saving the disorder predictions.')
+    
+    #Optional output format argument
+    parser.add_argument('-f', '--format', required=False, type=str,
+                        help='Specify the output format: CAID format (default) or raw CheZOD scores (input: -f Cs).')
+    
     return parser
 
 
@@ -178,12 +193,13 @@ def main():
 
     in_path = Path(args.input)
     out_path = Path(args.output)
+    form = args.format
 
     seqs = read_fasta(in_path)
     prott5, tokenizer = get_prott5(root_dir)
     CNN = load_CNN_ckeckpoint(root_dir)
     predictions = get_predictions(seqs, prott5, tokenizer, CNN)
-    write_predictions(out_path, predictions)
+    write_predictions(out_path, predictions, form)
 
 
 if __name__ == '__main__':
