@@ -70,11 +70,9 @@ def get_prott5(root_dir):
     #excluded lines are alternative import routes
     #cache_dir = root_dir / "ProtT5_XL_U50"
     #cache_dir.mkdir(exist_ok=True)
-    transformer_link = "Rostlab/prot_t5_xl_uniref50"
+    transformer_link="Rostlab/prot_t5_xl_half_uniref50-enc" #only load encoder part of ProtT5 in half precision
     #model = T5EncoderModel.from_pretrained(transformer_link, cache_dir=cache_dir) 
     model = T5EncoderModel.from_pretrained(transformer_link)
-    if not device.type=='cpu':
-        model = model.half() # run in half-precision to reduce vRAM consumption
     model = model.to(device)
     model = model.eval() # run in evaluation mode to ensure determinism
     #tokenizer = T5Tokenizer.from_pretrained(transformer_link, do_lower_case=False, cache_dir=cache_dir)
