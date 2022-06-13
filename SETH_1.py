@@ -99,41 +99,61 @@ def load_CNN_ckeckpoint(root_dir):
     return predictor
     
 
-def get_predictions(seqs, prott5, tokenizer, CNN):
+def get_predictions(seqs, prott5, tokenizer, CNN,form,max_residues=4000, max_seq_len=1000, max_batch=100):
     print("Making predictions...")
     
+    # sort sequences according to length (reduces unnecessary padding --> speeds up embedding)
+    seq_dict   = sorted( seqs.items(), key=lambda kv: len( seqs[kv[0]] ), reverse=True )
+    batch = list()
     predictions = dict()
-    for protein_id, original_seq in seqs.items():
+    for seq_idx, (protein_id, original_seq) in enumerate(seq_dict,1):
         seq = original_seq.replace('U','X').replace('Z','X').replace('O','X')
         seq_len = len(seq)
         seq = ' '.join(list(seq))
+        batch.append((protein_id,seq,seq_len))   
+        # count residues in current batch and add the last sequence length to
+        # avoid that through adding the next sequence, batches with (n_res_batch > max_residues) get processed 
+        n_res_batch = sum([ s_len for  _, _, s_len in batch ]) + seq_len 
+        # if a full batch is there or the maximal number of residues is reached or all existing sequences 
+        # are there or the sequence is greater than the max_seq_len, continue with the predictions for the batch
+        if len(batch) >= max_batch or n_res_batch>=max_residues or seq_idx==len(seq_dict) or seq_len>max_seq_len:
+            pdb_ids, seqs, seq_lens = zip(*batch)
+            len_batch=len(batch)
+            batch=list()
 
-        token_encoding = tokenizer.batch_encode_plus([seq], add_special_tokens=True, padding="longest")
-        input_ids      = torch.tensor(token_encoding['input_ids']).to(device)
-        attention_mask = torch.tensor(token_encoding['attention_mask']).to(device)
+            token_encoding = tokenizer.batch_encode_plus(seqs, add_special_tokens=True, padding="longest")
+            input_ids      = torch.tensor(token_encoding['input_ids']).to(device)
+            attention_mask = torch.tensor(token_encoding['attention_mask']).to(device)
 
-        try:
-            with torch.no_grad():
-                # get embeddings extracted from last hidden state 
-                emb = prott5(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state[:,:seq_len] # [1, L, 1024]
-                # predict Z-scores with CNN
-                Zscore=CNN(emb).detach().squeeze().cpu().numpy()
-                # convert Z-scores into 0,1 with threshold 8, disorder=1
-                diso_pred=(Zscore<8).astype(int)
-                # confidence metric: Z-scores normalized to [0,1]
-                prediction=Zscore*(-1) # disorder should have higher numbers than order
-                confidence=(prediction-(-17))/(6-(-17))
-                #all confidence values smaller than 0, larger than 1 mapped to 0 or 1.
-                for i in range(len(confidence)):
-                    if confidence[i]<0: 
-                        confidence[i]=0
-                    if confidence[i]>1:
-                        confidence[i]=1
-                predictions[protein_id] = (original_seq, diso_pred, confidence, Zscore)
-        except RuntimeError as e :
-            print(e)
-            print("RuntimeError during embedding for {} (L={})".format(protein_id, seq_len))
-            continue
+            try:
+                with torch.no_grad():
+                    # get embeddings extracted from last hidden state 
+                    emb = prott5(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
+                    # predict Z-scores with CNN
+                    if len_batch==1: #bring the Zscore in same format as when have multiple sequences in a batch
+                        Zscore=CNN(emb).detach().cpu().numpy()[0]
+                    else:
+                        Zscore=CNN(emb).detach().squeeze().cpu().numpy()
+                    # convert Z-scores into 0,1 with threshold 8, disorder=1
+                    diso_pred=(Zscore<8).astype(int)
+                    # confidence metric: Z-scores normalized to [0,1]
+                    prediction=Zscore*(-1) # disorder should have higher numbers than order
+                    confidence=(prediction-(-17))/(6-(-17))
+                    #all confidence values smaller than 0, larger than 1 mapped to 0 or 1.
+                    if form!='Cs': #no going through all confidence values if they are not in the output -> time saved
+                        for i in range(len(confidence)):
+                           for j in range(len(confidence[i])):
+                               if confidence[i][j]<0: 
+                                   confidence[i][j]=0
+                               if confidence[i][j]>1:
+                                   confidence[i][j]=1
+                    for batch_idx, identifier in enumerate(pdb_ids): # for each protein in the current mini-batch
+                        s_len = seq_lens[batch_idx]
+                        predictions[identifier] = ("".join(seqs[batch_idx]).replace(" ",""), diso_pred[batch_idx,:s_len], confidence[batch_idx,:s_len], Zscore[batch_idx,:s_len])
+            except RuntimeError as e :
+                print(e)
+                print("RuntimeError during embedding for {} (L={})".format(protein_id, seq_len))
+                continue
     return predictions
 
 
@@ -196,7 +216,7 @@ def main():
     seqs = read_fasta(in_path)
     prott5, tokenizer = get_prott5(root_dir)
     CNN = load_CNN_ckeckpoint(root_dir)
-    predictions = get_predictions(seqs, prott5, tokenizer, CNN)
+    predictions = get_predictions(seqs, prott5, tokenizer, CNN,form)
     write_predictions(out_path, predictions, form)
 
 
