@@ -9,7 +9,7 @@ import transformers
 from transformers import T5EncoderModel, T5Tokenizer
 import requests
 import torch.nn as nn
-
+import time
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print("Using device: {}".format(device))
@@ -65,18 +65,23 @@ def read_fasta(fasta_path):
 
 
 def get_prott5(root_dir):
+    start=time.time()
     print("Loading ProtT5...")
     transformers.logging.set_verbosity_error()
     #excluded lines are alternative import routes
     #cache_dir = root_dir / "ProtT5_XL_U50"
     #cache_dir.mkdir(exist_ok=True)
     transformer_link="Rostlab/prot_t5_xl_half_uniref50-enc" #only load encoder part of ProtT5 in half precision
-    #model = T5EncoderModel.from_pretrained(transformer_link, cache_dir=cache_dir) 
-    model = T5EncoderModel.from_pretrained(transformer_link)
+    #model = T5EncoderModel.from_pretrained(transformer_link, cache_dir=cache_dir)
+    if not device.type=='cpu':
+        model = T5EncoderModel.from_pretrained(transformer_link,torch_dtype=torch.float16)
+    else:
+        model = T5EncoderModel.from_pretrained(transformer_link)
     model = model.to(device)
     model = model.eval() # run in evaluation mode to ensure determinism
     #tokenizer = T5Tokenizer.from_pretrained(transformer_link, do_lower_case=False, cache_dir=cache_dir)
     tokenizer = T5Tokenizer.from_pretrained(transformer_link, do_lower_case=False)
+    print("Loaded ProtT5 in {:.1f}[s]".format(time.time()-start))
     return model, tokenizer
 
 
@@ -106,6 +111,7 @@ def get_predictions(seqs, prott5, tokenizer, CNN,form,max_residues=4000, max_seq
     seq_dict   = sorted( seqs.items(), key=lambda kv: len( seqs[kv[0]] ), reverse=True )
     batch = list()
     predictions = dict()
+    start=time.time()
     for seq_idx, (protein_id, original_seq) in enumerate(seq_dict,1):
         seq = original_seq.replace('U','X').replace('Z','X').replace('O','X')
         seq_len = len(seq)
@@ -141,12 +147,8 @@ def get_predictions(seqs, prott5, tokenizer, CNN,form,max_residues=4000, max_seq
                     confidence=(prediction-(-17))/(6-(-17))
                     #all confidence values smaller than 0, larger than 1 mapped to 0 or 1.
                     if form!='Cs': #no going through all confidence values if they are not in the output -> time saved
-                        for i in range(len(confidence)):
-                           for j in range(len(confidence[i])):
-                               if confidence[i][j]<0: 
-                                   confidence[i][j]=0
-                               if confidence[i][j]>1:
-                                   confidence[i][j]=1
+                        confidence[confidence<0]=0
+                        confidence[confidence>1]=1
                     for batch_idx, identifier in enumerate(pdb_ids): # for each protein in the current mini-batch
                         s_len = seq_lens[batch_idx]
                         predictions[identifier] = ("".join(seqs[batch_idx]).replace(" ",""), diso_pred[batch_idx,:s_len], confidence[batch_idx,:s_len], Zscore[batch_idx,:s_len])
@@ -154,6 +156,7 @@ def get_predictions(seqs, prott5, tokenizer, CNN,form,max_residues=4000, max_seq
                 print(e)
                 print("RuntimeError during embedding for {} (L={})".format(protein_id, seq_len))
                 continue
+    print("Generated embeddings & predictions in {:.1f}[m]".format((time.time()-start)/60))
     return predictions
 
 
@@ -204,6 +207,7 @@ def create_arg_parser():
 
 
 def main():
+    start=time.time()
     root_dir = Path.cwd()
     
     parser = create_arg_parser()
@@ -218,7 +222,9 @@ def main():
     CNN = load_CNN_ckeckpoint(root_dir)
     predictions = get_predictions(seqs, prott5, tokenizer, CNN,form)
     write_predictions(out_path, predictions, form)
-
+    end=time.time()
+    print("Predicting disorder for {} proteins took in total {:.1f}[m] ({:.3f}[s/protein])".format(
+        len(seqs),(end-start)/60,(end-start)/len(seqs)))
 
 if __name__ == '__main__':
     main()
