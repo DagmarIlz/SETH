@@ -1,6 +1,9 @@
 # SETH
 SETH is a predictor of nuances of a residue's disorder in proteins. As input, it only needs single protein sequences, which are then encoded in embeddings by the protein language model ProtT5 [[1]](#1) (Transformer). These embeddings are then passed to a two-layer CNN, whose output are the disorder predictions. The disorder predictions are given as CheZOD scores [[2]](#2) (or the normalization thereof, if you choose the default output format when executing the script on your local machine), which are continuous values for measuring disorder, where values below 8 signify disorder and values above 8 signify order [[2]](#2), [[3]](#3). If you choose the default output format when executing the script on your local machine, you will additionally receive binary disorder/order predictions (1=disorder, 0=order). Since SETH only needs single protein sequences as input, it can be applied to any protein and predictions are very fast compared to most disorder predictors achieving high performances.  
 
+## Precomputed predictions
+Precomputed predictions for the human proteome and Swiss-Prot [[4]](#4) are available at [zenodo](https://doi.org/10.5281/zenodo.6673817)
+
 ## Usage
 ### Usage online
 There is a [Google Colab](https://colab.research.google.com/drive/1vDWh5YI_BPxQg0ku6CxKtSXEJ25u2wSq?usp=sharing) script available, where you can execute SETH online to receive disorder predictions (CheZOD scores) and can subsequently download them.
@@ -23,3 +26,6 @@ Nielsen, J. T. & Mulder, F. A. A. 2020. Quantitative Protein Disorder Assessment
 
 <a id="3">[3]</a> 
 Nielsen, J. T. & Mulder, F. A. A. 2019. Quality and bias of protein disorder predictors. Scientific reports, 9, 5137
+
+<a id="4">[4]</a> 
+The UniProt Consortium 2021. UniProt: the universal protein knowledgebase in 2021. Nucleic Acids Research 49, D480-D489
