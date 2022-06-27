@@ -15,7 +15,7 @@ You may optionally add `-f Cs` at the end, to only get CheZOD scores for the inp
 When adding the performance of SETH to the large scale evaluation of disorder predictors [[3]](#3), i.e., evaluating SETH on the same test set, it outperformed all other methods.![](/images/Figure_3.jpg) 
 
 ## Cite
-In case you are using this method and find it helpful, please cite... (will soon be available)
+In case you are using this method and find it helpful, please cite: Ilzhoefer, D., Heinzinger, M. & Rost, B. 2022. SETH predicts nuances of residue disorder from protein embeddings, https://doi.org/10.1101/2022.06.23.497276 (Preprint)
 
 ## References
 <a id="1">[1]</a> 
