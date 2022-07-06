@@ -8,14 +8,16 @@ Precomputed predictions for the human proteome and Swiss-Prot [[4]](#4) are avai
 ### Usage online
 There is a [Google Colab](https://colab.research.google.com/drive/1vDWh5YI_BPxQg0ku6CxKtSXEJ25u2wSq?usp=sharing) script available, where you can execute SETH online to receive disorder predictions (CheZOD scores) and can subsequently download them.
 ### Usage on your local machine
-If you have installed python and the libraries specified in the requirements.txt, the python script SETH_1.py can be executed in your cmd after download by typing `SETH_1.py -i <your input fasta file name> -o <the desired name of your output file>`.
+If you have installed python and the libraries specified in the requirements.txt (In case you want to execute SETH on a GPU, which brings significant time advantages, you may need to adjust the torch installation stated in the requirements.txt accordingly (see [PyTorch](https://pytorch.org/))), the python script SETH_1.py can be executed in your cmd after download by typing `SETH_1.py -i <your input fasta file name> -o <the desired name of your output file>`.
 You may optionally add `-f Cs` at the end, to only get CheZOD scores for the input protein(s) as output. By default, your output will be a table in [CAID](https://idpcentral.org/caid) format (per protein you get: one colum with the residue number, one colum with the amino acid name, one colum with normalized CheZOD scores, where 1 signifies maximum disorder and 0 maximum order and one colum with binary disorder/order predictions).
 
 ## Performance
 When adding the performance of SETH to the large scale evaluation of disorder predictors [[3]](#3), i.e., evaluating SETH on the same test set, it outperformed all other methods.![](/images/Figure_3.jpg) 
 
 ## Cite
-In case you are using this method and find it helpful, please cite: Ilzhoefer, D., Heinzinger, M. & Rost, B. 2022. SETH predicts nuances of residue disorder from protein embeddings, https://doi.org/10.1101/2022.06.23.497276 (Preprint)
+In case you are using this method and find it helpful, please cite:
+ 
+Ilzhoefer, D., Heinzinger, M. & Rost, B. 2022. SETH predicts nuances of residue disorder from protein embeddings, https://doi.org/10.1101/2022.06.23.497276 (Preprint)
 
 ## References
 <a id="1">[1]</a> 
