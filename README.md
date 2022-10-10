@@ -17,8 +17,7 @@ When adding the performance of SETH to the large scale evaluation of disorder pr
 ## Cite
 In case you are using this method and find it helpful, please cite:
  
-Ilzhoefer, D., Heinzinger, M. & Rost, B. 2022. SETH predicts nuances of residue disorder from protein embeddings, https://doi.org/10.1101/2022.06.23.497276 (Preprint)
-
+Ilzhöfer D, Heinzinger M and Rost B (2022) SETH predicts nuances of residue disorder from protein embeddings. Front. Bioinform. 2:1019597. https://doi.org/10.3389/fbinf.2022.1019597
 ## References
 <a id="1">[1]</a> 
 Elnaggar, A., Heinzinger, M., Dallago, C., Rihawi, G., Wang, Y., Jones, L., Gibbs, T., Feher, T., Angerer, C., Steinegger, M., Bhowmik, D. & Rost, B. 2021. ProtTrans: Towards Cracking the Language of Life's Code Through Self-Supervised Deep Learning and High Performance Computing. arXiv:2007.06225
